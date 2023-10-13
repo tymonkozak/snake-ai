@@ -7,6 +7,10 @@ WIN_WIDTH = 500
 WIN_HEIGHT = 500
 CELL_SIZE = 25
 
+highest_score = 0
+
+pygame.init()
+
 WIN = pygame.display.set_mode((WIN_WIDTH, WIN_HEIGHT))
 pygame.display.set_caption("Snake")
 
@@ -25,11 +29,11 @@ def check_death(index, snake):
         return True
     if snake.x < 0:
         return True
-    elif snake.x > WIN_WIDTH:
+    elif snake.x >= WIN_WIDTH:
         return True
     elif snake.y < 0:
         return True
-    elif snake.y > WIN_HEIGHT:
+    elif snake.y >= WIN_HEIGHT:
         return True
 
 def remove(index):
@@ -41,11 +45,16 @@ def redraw(snake, food):
     snake.draw()
     food.draw()
 
+def draw_text(score):
+    font = pygame.font.SysFont(None, 24)
+    text = font.render("Current highest score: " + str(score), True, (255, 255, 255))
+    WIN.blit(text, (10, 5))
+
 def eval_genomes(genomes, config):
 
   clock = pygame.time.Clock()
 
-  global snakes, ge, nets
+  global snakes, ge, nets, highest_score
 
   snakes = []
   ge = []
@@ -67,14 +76,11 @@ def eval_genomes(genomes, config):
     WIN.fill((0, 0, 0))
 
     for i, (snake,food) in enumerate(snakes):
+        if snake.length > highest_score:
+            highest_score = snake.length
         snake.update_body()
         redraw(snake, food)
-        output = nets[i].activate((snake.x, 
-                                snake.y,
-                                WIN_WIDTH,
-                                food.x,
-                                food.y, 
-                                distance(snake.x, snake.y, food.x, food.y)))
+        output = nets[i].activate(snake.eyes(food))
         output_index = output.index(max(output))
         if(output_index == 0):
             snake.change_direction("FORWARD")
@@ -85,12 +91,14 @@ def eval_genomes(genomes, config):
 
         snake.move()
 
-        if check_collision(snake, food):
-            ge[i].fitness += 3
-            snake.length += 1
         if check_death(i, snake):
-            ge[i].fitness -= 1
+            ge[i].fitness -= 10
             remove(i)
+        if check_collision(snake, food):
+            ge[i].fitness += 10
+            snake.length += 1
+
+    draw_text(highest_score)
 
     clock.tick(30)
     pygame.display.update()
